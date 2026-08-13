@@ -1,0 +1,90 @@
+/* Estilo general para la sección de servicios */
+.servicios-section {
+    
+    padding: 50px 20px;
+    text-align: center;
+    background-color: #fff;
+}
+
+.servicios-section h2 {
+    font-size: 36px;
+    color: #1e2d3b;
+    margin-bottom: 30px;
+    position: relative;
+}
+
+
+.servicios-section h2::after {
+    content: '';
+    display: block;
+    width: 60px;
+    height: 5px;
+    background-color: #ffd700;
+    margin: 10px auto;
+}
+
+/* Grid para organizar las cartas */
+.servicios-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); 
+    gap: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Estilos para las cartas de servicio */
+.servicio-card {
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    text-align: left;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.servicio-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.servicio-card img {
+    max-width: 100%;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.servicio-card h3 {
+    font-size: 24px;
+    color: #1e2d3b;
+    margin-bottom: 10px;
+}
+
+.servicio-card p {
+    font-size: 16px;
+    color: #777;
+}
+
+.servicio-card ul {
+    list-style-type: square; 
+    padding-left: 20px;    
+}
+
+.servicio-card li {
+    margin-bottom: 5px;    
+    color: #333;           
+}
+
+
+
+/* Media queries para hacer responsive el diseño */
+@media (max-width: 1024px) {
+    .servicios-grid {
+        grid-template-columns: repeat(2, 1fr); /* 2 columnas en pantallas medianas */
+    }
+}
+
+@media (max-width: 768px) {
+    .servicios-grid {
+        grid-template-columns: 1fr; /* 1 columna en pantallas pequeñas */
+    }
+}

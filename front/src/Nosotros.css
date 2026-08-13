@@ -1,0 +1,68 @@
+/* Sección general */
+.nosotros-section {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    padding: 100px 0;
+    background-color: #f9f9f9; 
+}
+
+
+.nosotros-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr; 
+    gap: 50px; 
+    width: 90%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Estilo del texto (columna izquierda) */
+.nosotros-text {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.nosotros-text h2 {
+    font-size: 2.5rem;
+    color: rgb(30, 45, 59);
+}
+
+.nosotros-text h2::after {
+    content: '';
+    display: block;
+    width: 60px;
+    height: 7px;
+    background-color: #ffd700;
+    margin: 10px 0 0 0;
+    
+}
+
+.nosotros-text p {
+    font-size: 1.2rem;
+    line-height: 1.6;
+    color: #333;
+    margin-top: 20px;
+}
+
+.nosotros-image {
+    height: 400px;
+    background-image: url('/home_slider2.webp'); 
+    background-size: cover; 
+    background-position: center;
+    background-attachment: scroll; 
+    border-radius: 10px;
+}
+
+/* Responsividad para pantallas pequeñas */
+@media (max-width: 768px) {
+    .nosotros-content {
+        grid-template-columns: 1fr; /* Cambia a una sola columna en pantallas pequeñas */
+    }
+
+    .nosotros-image {
+        height: 300px; /* Reduce la altura de la imagen en móviles */
+    }
+}

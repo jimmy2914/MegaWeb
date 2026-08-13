@@ -1,0 +1,90 @@
+/* Estilo general para la sección de proyectos */
+.proyectos-section {
+    padding: 50px 20px;
+    text-align: center;
+    background-color: #fff;
+}
+
+.proyectos-section h2 {
+    font-size: 36px;
+    color: #1e2d3b;
+    margin-bottom: 30px;
+    position: relative;
+}
+
+.proyectos-section h2::after {
+    content: '';
+    display: block;
+    width: 60px;
+    height: 5px;
+    background-color: #ffd700;
+    margin: 10px auto;
+}
+
+
+.proyectos-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); 
+    gap: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* Estilo para cada proyecto 
+.proyecto-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+    */
+/*
+.proyecto-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+*/
+/* Imagen del proyecto */
+.proyecto-card img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 8px;
+}
+
+/* Ocultar la información por defecto */
+.proyecto-info {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #1e2d3b;
+    background-color: rgba(255, 255, 255, 0.7); /* Fondo blanco semitransparente */
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+/* Mostrar la información al hacer hover */
+.proyecto-card:hover .proyecto-info {
+    opacity: 1;
+}
+
+/* Información del proyecto */
+.proyecto-info h3 {
+    font-size: 24px;
+    margin: 0;
+}
+
+/* Media queries para hacer responsive el diseño */
+@media (max-width: 768px) {
+    .proyectos-grid {
+        grid-template-columns: 1fr; /* 1 columna en pantallas pequeñas */
+    }
+}

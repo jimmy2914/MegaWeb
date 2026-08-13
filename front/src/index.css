@@ -1,0 +1,37 @@
+html {
+  scroll-behavior: smooth;
+}
+
+body, html {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow-x: hidden; 
+}
+
+.container {
+  width: 100%;
+  margin: auto auto; 
+}
+
+/* --- Isolated Page Views & Smooth Transitions --- */
+.page-view {
+  min-height: calc(100vh - 350px); /* Leaves enough space for fixed Nav and Footer */
+  box-sizing: border-box;
+  background-color: #f9f9f9; /* Color standard for isolated sections */
+}
+
+.animate-fade-in {
+  animation: pageFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
