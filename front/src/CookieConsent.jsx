@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import './CookieConsent.css'; // Puedes agregar tu propio estilo
 
 const CookieConsent = () => {

@@ -1,4 +1,3 @@
-import React from 'react';
 import { FaLinkedin, FaYoutube, FaInstagram, FaWhatsapp, FaPhone, FaEnvelope } from 'react-icons/fa'; // Importamos los iconos
 import './Footer.css'; 
 

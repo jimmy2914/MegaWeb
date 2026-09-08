@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import './Foro.css';
 
@@ -43,7 +43,7 @@ function Foro() {
             const res = await fetch(`${API_URL}/forum/threads`);
             const data = await res.json();
             setThreads(data.threads || []);
-        } catch (e) {
+        } catch {
             setThreads([]);
         }
     };
@@ -53,7 +53,7 @@ function Foro() {
             const res = await fetch(`${API_URL}/forum/threads/${id}`);
             const data = await res.json();
             setThreadPosts(data.posts || []);
-        } catch (e) {
+        } catch {
             setThreadPosts([]);
         }
     };

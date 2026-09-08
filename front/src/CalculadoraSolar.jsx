@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import './CalculadoraSolar.css';
 
 const API_URL = 'http://localhost:3000/api/v1';

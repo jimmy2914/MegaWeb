@@ -1,17 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
+import { useCart } from './CartContext';
 import './Tienda.css';
 
 const API_URL = 'http://localhost:3000/api/v1';
 
-const parseApiError = (data) => {
-    if (!data) return 'Error desconocido. Intenta de nuevo.';
-    if (Array.isArray(data.message)) return data.message.join(' | ');
-    return data.message || data.error || 'Error desconocido. Intenta de nuevo.';
-};
-
 function Tienda() {
-    const { user, token, navigateToLogin } = useAuth();
+    const { user, navigateToLogin } = useAuth();
+    const {
+        cart,
+        showCartDrawer,
+        setShowCartDrawer,
+        addToCart,
+        updateQuantity,
+        removeFromCart,
+        clearCart,
+        getCartCount,
+        getSubtotal,
+        getTax,
+        getShipping,
+        getTotal
+    } = useCart();
 
     // --- Estado de productos ---
     const [products, setProducts] = useState([]);
@@ -19,18 +28,14 @@ function Tienda() {
     const [categoryFilter, setCategoryFilter] = useState('ALL');
     const [loading, setLoading] = useState(true);
 
-    // --- Estado del carrito ---
-    const [cart, setCart] = useState([]);
-    const [showCartDrawer, setShowCartDrawer] = useState(false);
-
-    // Claves de localStorage según el usuario
-    const getCartKey = (userId) => userId ? `mp_cart_${userId}` : 'mp_cart_guest';
     const getCheckoutKey = (userId) => userId ? `mp_checkout_${userId}` : 'mp_checkout_guest';
 
-    // --- Estado de checkout y modal ---
+    // --- Estado de checkout, modal y guía de usuario ---
     const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+    const [showGuideModal, setShowGuideModal] = useState(false);
     const [checkoutSuccess, setCheckoutSuccess] = useState(false);
     const [orderId, setOrderId] = useState('');
+    const [whatsappUrl, setWhatsappUrl] = useState('');
     const [orderError, setOrderError] = useState('');
     const [checkoutLoading, setCheckoutLoading] = useState(false);
 
@@ -50,45 +55,16 @@ function Tienda() {
     const [addressCity, setAddressCity] = useState('');
     const [addressDept, setAddressDept] = useState('');
     const [addressPhone, setAddressPhone] = useState('');
-    const [paymentMethod, setPaymentMethod] = useState('PAGOS_PSE');
+    const [paymentMethod, setPaymentMethod] = useState('WHATSAPP');
+    const [isCheckoutLoaded, setIsCheckoutLoaded] = useState(false);
 
     // --- Consultar productos al montar ---
     useEffect(() => {
         fetchProducts();
     }, []);
 
-    // --- Cargar carrito y checkout según el usuario ---
+    // --- Cargar datos de checkout guardados según el usuario ---
     useEffect(() => {
-        const cartKey = getCartKey(user?.id);
-        const savedCart = localStorage.getItem(cartKey);
-
-        if (user?.id) {
-            // Fusionar carrito de invitado con el del usuario autenticado si existe
-            const guestCartStr = localStorage.getItem('mp_cart_guest');
-            let userCartItems = savedCart ? JSON.parse(savedCart) : [];
-
-            if (guestCartStr) {
-                try {
-                    const guestItems = JSON.parse(guestCartStr);
-                    guestItems.forEach(gItem => {
-                        const existingIndex = userCartItems.findIndex(uItem => uItem.id === gItem.id);
-                        if (existingIndex >= 0) {
-                            userCartItems[existingIndex].quantity += gItem.quantity;
-                        } else {
-                            userCartItems.push(gItem);
-                        }
-                    });
-                } catch (e) {
-                    console.error('Error al procesar carrito de invitado:', e);
-                }
-                localStorage.removeItem('mp_cart_guest');
-            }
-            setCart(userCartItems);
-        } else {
-            setCart(savedCart ? JSON.parse(savedCart) : []);
-        }
-
-        // Cargar proceso de compra / datos guardados
         const checkoutKey = getCheckoutKey(user?.id);
         const savedCheckout = localStorage.getItem(checkoutKey);
         if (savedCheckout) {
@@ -98,19 +74,17 @@ function Tienda() {
                 setAddressCity(parsed.city || '');
                 setAddressDept(parsed.dept || '');
                 setAddressPhone(parsed.phone || '');
-                setPaymentMethod(parsed.paymentMethod || 'PAGOS_PSE');
-            } catch (e) {}
+                setPaymentMethod(parsed.paymentMethod || 'WHATSAPP');
+            } catch {
+                // Si falla el parseo, mantener valores por defecto
+            }
         }
+        setIsCheckoutLoaded(true);
     }, [user?.id]);
 
-    // --- Persistir carrito al cambiar ---
+    // --- Persistir proceso de compra al cambiar datos ---
     useEffect(() => {
-        const cartKey = getCartKey(user?.id);
-        localStorage.setItem(cartKey, JSON.stringify(cart));
-    }, [cart, user?.id]);
-
-    // --- Persistir proceso de compra / dirección al cambiar ---
-    useEffect(() => {
+        if (!isCheckoutLoaded) return;
         const checkoutKey = getCheckoutKey(user?.id);
         const checkoutData = {
             street: addressStreet,
@@ -120,7 +94,7 @@ function Tienda() {
             paymentMethod
         };
         localStorage.setItem(checkoutKey, JSON.stringify(checkoutData));
-    }, [addressStreet, addressCity, addressDept, addressPhone, paymentMethod, user?.id]);
+    }, [addressStreet, addressCity, addressDept, addressPhone, paymentMethod, user?.id, isCheckoutLoaded]);
 
     const fetchProducts = async () => {
         setLoading(true);
@@ -247,116 +221,55 @@ function Tienda() {
         }
     };
 
-    // --- Acciones de carrito ---
-    const addToCart = (product) => {
-        setCart(prevCart => {
-            const existing = prevCart.find(item => item.id === product.id);
-            if (existing) {
-                if (existing.quantity >= product.inventory) {
-                    alert('Límite de inventario alcanzado para este producto.');
-                    return prevCart;
-                }
-                return prevCart.map(item =>
-                    item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
-                );
-            }
-            return [...prevCart, { ...product, quantity: 1 }];
-        });
-        setShowCartDrawer(true);
-    };
+    // --- Generar Factura y Abrir WhatsApp ---
+    const EMPRESA_WHATSAPP = '573126217709';
 
-    const updateQuantity = (productId, amount) => {
-        setCart(prevCart => {
-            return prevCart.map(item => {
-                if (item.id === productId) {
-                    const newQty = item.quantity + amount;
-                    if (newQty <= 0) return null;
-                    if (newQty > item.inventory) {
-                        alert('Límite de inventario alcanzado.');
-                        return item;
-                    }
-                    return { ...item, quantity: newQty };
-                }
-                return item;
-            }).filter(Boolean);
-        });
-    };
-
-    const removeFromCart = (productId) => {
-        setCart(prevCart => prevCart.filter(item => item.id !== productId));
-    };
-
-    const getCartCount = () => {
-        return cart.reduce((sum, item) => sum + item.quantity, 0);
-    };
-
-    const getSubtotal = () => {
-        return cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    };
-
-    const getTax = () => {
-        return getSubtotal() * 0.19; // 19% IVA
-    };
-
-    const getShipping = () => {
-        const sub = getSubtotal();
-        if (sub === 0) return 0;
-        return sub > 1500000 ? 0 : 50000;
-    };
-
-    const getTotal = () => {
-        return getSubtotal() + getTax() + getShipping();
-    };
-
-    // --- Enviar Pedido ---
-    const handleCheckoutSubmit = async (e) => {
+    const handleCheckoutSubmit = (e) => {
         e.preventDefault();
         setOrderError('');
 
-        const activeToken = localStorage.getItem('mp_token');
-        if (!activeToken) {
-            setOrderError('Debes iniciar sesión para completar tu pedido.');
-            return;
-        }
+        // Generar número de pedido local
+        const pedidoId = 'MP-' + Date.now().toString(36).toUpperCase();
+        const fecha = new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' });
 
-        setCheckoutLoading(true);
+        // Construir líneas de productos
+        const lineasProductos = cart.map(item =>
+            `  • ${item.name} x${item.quantity} — ${formatCurrency(item.price * item.quantity)}`
+        ).join('\n');
 
-        const orderData = {
-            items: cart.map(item => ({
-                productId: item.id,
-                quantity: item.quantity
-            })),
-            paymentMethod: paymentMethod,
-            shippingAddress: {
-                street: addressStreet,
-                city: addressCity,
-                department: addressDept,
-                phone: addressPhone
-            }
-        };
+        // Mensaje de factura precompletado
+        const mensaje =
+`🛒 *SOLICITUD DE PEDIDO — MegaWeb Solar*
+📋 Ref: ${pedidoId}
+📅 Fecha: ${fecha}
 
-        try {
-            const res = await fetch(`${API_URL}/orders`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${activeToken}`
-                },
-                body: JSON.stringify(orderData)
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.message || 'Error al procesar el pedido');
-            
-            // Éxito
-            setOrderId(data.id);
-            setCheckoutSuccess(true);
-            setCart([]); // Vaciar carrito
-            localStorage.removeItem(getCartKey(user?.id));
-        } catch (err) {
-            setOrderError(err.message);
-        } finally {
-            setCheckoutLoading(false);
-        }
+*PRODUCTOS SOLICITADOS:*
+${lineasProductos}
+
+*RESUMEN:*
+  Subtotal:   ${formatCurrency(getSubtotal())}
+  IVA (19%): ${formatCurrency(getTax())}
+  Envío:       ${getShipping() === 0 ? 'A coordinar' : formatCurrency(getShipping())}
+  ─────────────────
+  *TOTAL:  ${formatCurrency(getTotal())}*
+
+*DATOS DE ENVÍO:*
+  Dirección: ${addressStreet}
+  Ciudad: ${addressCity}
+  Departamento: ${addressDept}
+  Teléfono: ${addressPhone}${user ? `
+
+*CLIENTE:*
+  ${user.name} — ${user.email}` : ''}
+
+Por favor confirmar disponibilidad y coordinar el proceso de pago. ¡Gracias! 🌟`;
+
+        const url = `https://wa.me/${EMPRESA_WHATSAPP}?text=${encodeURIComponent(mensaje)}`;
+
+        // Marcar éxito y guardar la URL para el botón
+        setOrderId(pedidoId);
+        setCheckoutSuccess(true);
+        setWhatsappUrl(url);
     };
 
     const formatCurrency = (value) => {
@@ -386,27 +299,63 @@ function Tienda() {
                     Equipamiento solar y de iluminación inteligente de calidad industrial para tus proyectos de energía.
                 </p>
 
-                {/* Aviso de Inicio de Sesión si no está autenticado */}
-                {!user && (
-                    <div className="tienda-auth-banner">
-                        <span>💡 Inicia sesión para vincular y guardar tu carrito de compras y asegurar tu proceso de pedido.</span>
-                        <button className="tienda-btn-auth-banner" onClick={() => navigateToLogin('#tienda')}>
-                            Iniciar Sesión
-                        </button>
-                    </div>
-                )}
+                {/* Barra de acciones horizontal unificada */}
+                <div className="tienda-action-bar">
 
-                {/* Carrito Flotante Cabecera */}
-                <div className="tienda-cart-trigger-container">
+                    {/* Segmento 1: Texto informativo */}
+                    <div className="tienda-action-info">
+                        <span className="tienda-action-info-icon">💡</span>
+                        <span className="tienda-action-info-text">
+                            {user
+                                ? <>Bienvenido, <strong>{user.name?.split(' ')[0] || user.email}</strong>. Tu carrito está guardado en tu cuenta.</>
+                                : <><strong>Inicia sesión</strong> para vincular y guardar tu carrito de compras<br />y asegurar tu proceso de pedido.</>
+                            }
+                        </span>
+                    </div>
+
+                    <div className="tienda-action-divider" />
+
+                    {/* Segmento 2: Botón sesión */}
+                    {user ? (
+                        <div className="tienda-action-user-pill">
+                            <span className="tienda-action-avatar">
+                                {user.name ? user.name.charAt(0).toUpperCase() : '👤'}
+                            </span>
+                            <span>{user.name?.split(' ')[0] || 'Mi cuenta'}</span>
+                        </div>
+                    ) : (
+                        <button className="tienda-btn-login-bar" onClick={() => navigateToLogin('#tienda')}>
+                            <span className="tienda-btn-login-icon">👤</span>
+                            <span>Iniciar Sesión</span>
+                        </button>
+                    )}
+
+                    <div className="tienda-action-divider" />
+
+                    {/* Segmento 3: Guía de compra */}
+                    <button className="tienda-guide-trigger" onClick={() => setShowGuideModal(true)}>
+                        <span className="tienda-guide-icon">🗒️</span>
+                        <span className="tienda-guide-texts">
+                            <span className="tienda-guide-label">¿Cómo comprar?</span>
+                            <span className="tienda-guide-sub">Guía de Compra <span className="tienda-guide-arrow">›</span></span>
+                        </span>
+                    </button>
+
+                    <div className="tienda-action-divider" />
+
+                    {/* Segmento 4: Carrito */}
                     <button className="tienda-cart-trigger" onClick={() => setShowCartDrawer(true)}>
-                        <span className="tienda-cart-icon">🛒</span>
-                        <span className="tienda-cart-text">Mi Carrito</span>
+                        <span className="tienda-cart-icon-wrap">🛒</span>
+                        <span className="tienda-cart-label">Mi Carrito</span>
                         {getCartCount() > 0 && (
                             <span className="tienda-cart-badge">{getCartCount()}</span>
                         )}
+                        <span className="tienda-cart-chevron">⌄</span>
                     </button>
+
                 </div>
             </div>
+
 
             {/* BARRA DE ADMINISTRACIÓN (sólo ADMIN) */}
             {isAdmin && (
@@ -575,20 +524,31 @@ function Tienda() {
 
                         {checkoutSuccess ? (
                             <div className="tienda-checkout-success">
-                                <div className="tienda-success-icon">🎉</div>
-                                <h3>¡Pedido Realizado con Éxito!</h3>
-                                <p>Tu orden ha sido registrada correctamente.</p>
+                                <div className="tienda-success-icon">✅</div>
+                                <h3>¡Factura Lista!</h3>
                                 <div className="tienda-order-tag">
-                                    ID de la Orden: <code>{orderId}</code>
+                                    Ref. del Pedido: <code>{orderId}</code>
                                 </div>
                                 <p className="tienda-success-subtext">
-                                    Nos pondremos en contacto contigo pronto para coordinar el proceso de pago y el envío.
+                                    Tu factura ha sido generada. Haz clic en el botón para abrirla directamente en WhatsApp — el mensaje ya viene escrito, solo tienes que enviarlo. Nuestro equipo te contactará para coordinar el pago y la entrega.
                                 </p>
+                                <a
+                                    href={whatsappUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="tienda-btn-whatsapp"
+                                    onClick={() => { clearCart(); }}
+                                >
+                                    <span>💬</span>
+                                    <span>Enviar Pedido por WhatsApp</span>
+                                </a>
                                 <button
-                                    className="tienda-btn-primary"
+                                    className="tienda-btn-secondary"
+                                    style={{ marginTop: '12px', width: '100%' }}
                                     onClick={() => {
                                         setShowCheckoutModal(false);
                                         setCheckoutSuccess(false);
+                                        clearCart();
                                     }}
                                 >
                                     Seguir Comprando
@@ -608,7 +568,7 @@ function Tienda() {
                                 {orderError && <div className="tienda-auth-error">{orderError}</div>}
 
                                 <form onSubmit={handleCheckoutSubmit} className="tienda-checkout-form">
-                                    <h4 className="tienda-form-section-title">Dirección de Envío</h4>
+                                    <h4 className="tienda-form-section-title">Datos de Envío</h4>
                                     <div className="tienda-form-row">
                                         <div className="tienda-form-group">
                                             <label>Calle / Dirección</label>
@@ -656,31 +616,6 @@ function Tienda() {
                                         </div>
                                     </div>
 
-                                    <h4 className="tienda-form-section-title">Método de Pago</h4>
-                                    <div className="tienda-payment-selector">
-                                        {[
-                                            { id: 'PAGOS_PSE', name: 'PSE / Debito Bancario', icon: '🏦' },
-                                            { id: 'CARD', name: 'Tarjeta Crédito / Débito', icon: '💳' },
-                                            { id: 'NEQUI', name: 'Nequi / Celular', icon: '📱' },
-                                            { id: 'BALOTO', name: 'Efectivo Baloto/Efecty', icon: '💵' }
-                                        ].map(method => (
-                                            <label
-                                                key={method.id}
-                                                className={`tienda-payment-option ${paymentMethod === method.id ? 'tienda-payment-option--active' : ''}`}
-                                            >
-                                                <input
-                                                    type="radio"
-                                                    name="payment"
-                                                    value={method.id}
-                                                    checked={paymentMethod === method.id}
-                                                    onChange={() => setPaymentMethod(method.id)}
-                                                />
-                                                <span className="tienda-payment-icon">{method.icon}</span>
-                                                <span className="tienda-payment-name">{method.name}</span>
-                                            </label>
-                                        ))}
-                                    </div>
-
                                     <div className="tienda-checkout-summary">
                                         <div className="tienda-summary-row">
                                             <span>Subtotal:</span>
@@ -692,37 +627,108 @@ function Tienda() {
                                         </div>
                                         <div className="tienda-summary-row">
                                             <span>Envío:</span>
-                                            <span>{getShipping() === 0 ? 'Gratis' : formatCurrency(getShipping())}</span>
+                                            <span>{getShipping() === 0 ? 'A coordinar' : formatCurrency(getShipping())}</span>
                                         </div>
                                         <div className="tienda-summary-row tienda-summary-row--total-final">
-                                            <span>Total a Pagar:</span>
+                                            <span>Total Estimado:</span>
                                             <span>{formatCurrency(getTotal())}</span>
                                         </div>
                                     </div>
 
-                                    {!user ? (
-                                        <button
-                                            type="button"
-                                            className="tienda-btn-primary tienda-btn-full"
-                                            onClick={() => {
-                                                setShowCheckoutModal(false);
-                                                navigateToLogin('#tienda');
-                                            }}
-                                        >
-                                            Inicia Sesión para Confirmar Pedido
-                                        </button>
-                                    ) : (
-                                        <button
-                                            type="submit"
-                                            className="tienda-btn-primary tienda-btn-full"
-                                            disabled={checkoutLoading}
-                                        >
-                                            {checkoutLoading ? 'Procesando Pedido...' : `Confirmar Pedido (${formatCurrency(getTotal())})`}
-                                        </button>
-                                    )}
+                                    <div className="tienda-whatsapp-notice">
+                                        <span>💬</span>
+                                        <span>Al confirmar, se generará tu factura y se abrirá <strong>WhatsApp</strong> con el pedido escrito. Solo deberás enviar el mensaje para iniciar el proceso.</span>
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        className="tienda-btn-whatsapp tienda-btn-full"
+                                    >
+                                        <span>💬</span>
+                                        <span>Generar Factura y Enviar por WhatsApp</span>
+                                    </button>
                                 </form>
                             </div>
                         )}
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: GUÍA DE COMPRA / PROCESO DE PEDIDO */}
+            {showGuideModal && (
+                <div className="tienda-modal-overlay" onClick={() => setShowGuideModal(false)}>
+                    <div className="tienda-guide-modal" onClick={e => e.stopPropagation()}>
+                        <button className="tienda-modal-close" onClick={() => setShowGuideModal(false)}>✕</button>
+
+                        <div className="tienda-guide-header">
+                            <span className="tienda-guide-badge">📋 GUÍA DE COMPRA</span>
+                            <h3>¿Cómo hacer tu pedido en MegaWeb?</h3>
+                            <p>Sin pasarela de pagos, sin complicaciones. Tu pedido llega directo a nuestro WhatsApp.</p>
+                        </div>
+
+                        <div className="tienda-guide-steps">
+                            <div className="tienda-guide-step">
+                                <div className="tienda-step-number">1</div>
+                                <div className="tienda-step-content">
+                                    <h4>🛒 Agrega productos al carrito</h4>
+                                    <p>Explora el catálogo de paneles solares, inversores, baterías y servicios. Haz clic en <strong>"Añadir al Carrito"</strong> en cada producto que quieras. Puedes ajustar las cantidades dentro del carrito.</p>
+                                </div>
+                            </div>
+
+                            <div className="tienda-guide-step">
+                                <div className="tienda-step-number">2</div>
+                                <div className="tienda-step-content">
+                                    <h4>👤 Inicia sesión (opcional pero recomendado)</h4>
+                                    <p>Si inicias sesión, tu carrito quedará guardado y podrás retomarlo en cualquier momento. También puedes continuar como invitado.</p>
+                                </div>
+                            </div>
+
+                            <div className="tienda-guide-step">
+                                <div className="tienda-step-number">3</div>
+                                <div className="tienda-step-content">
+                                    <h4>📋 Procede al checkout e ingresa tus datos</h4>
+                                    <p>Haz clic en <strong>"Proceder al Checkout"</strong> desde el carrito. Diligencia tu dirección de entrega, ciudad, departamento y teléfono. Estos datos quedarán en tu factura.</p>
+                                </div>
+                            </div>
+
+                            <div className="tienda-guide-step">
+                                <div className="tienda-step-number">4</div>
+                                <div className="tienda-step-content">
+                                    <h4>💬 Genera tu factura y envíala por WhatsApp</h4>
+                                    <p>Al confirmar, se genera automáticamente tu <strong>factura de pedido</strong> y se abre WhatsApp con el mensaje ya escrito — incluyendo productos, cantidades, total y tus datos. <strong>Solo debes pulsar Enviar.</strong></p>
+                                </div>
+                            </div>
+
+                            <div className="tienda-guide-step">
+                                <div className="tienda-step-number">5</div>
+                                <div className="tienda-step-content">
+                                    <h4>✅ Nuestro equipo coordina el pago y el envío</h4>
+                                    <p>Un asesor de MegaWeb recibirá tu pedido por WhatsApp, te confirmará disponibilidad y te indicará las opciones de pago (transferencia, Nequi, efectivo, etc.) y los tiempos de entrega.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="tienda-guide-whatsapp-note">
+                            <span className="tienda-guide-wa-icon">💬</span>
+                            <div>
+                                <strong>¿Tienes dudas antes de comprar?</strong>
+                                <p>Escríbenos directamente por WhatsApp y con gusto te asesoramos.</p>
+                                <a
+                                    href="https://wa.me/573126217709?text=Hola%2C%20necesito%20asesor%C3%ADa%20sobre%20los%20productos%20de%20la%20tienda%20solar."
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="tienda-guide-wa-link"
+                                >
+                                    Contactar asesor →
+                                </a>
+                            </div>
+                        </div>
+
+                        <div className="tienda-guide-footer">
+                            <button className="tienda-btn-primary" onClick={() => setShowGuideModal(false)}>
+                                ¡Entendido, empezar a comprar! 🚀
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -853,7 +859,7 @@ function Tienda() {
                         <div className="tienda-confirm-icon">🗑️</div>
                         <h4>¿Eliminar Producto?</h4>
                         <p>
-                            Estás a punto de eliminar permanentemente <strong>"{deletingProduct.name}"</strong>.
+                            Estás a punto de eliminar permanentemente <strong>&quot;{deletingProduct.name}&quot;</strong>.
                             Esta acción no se puede deshacer.
                         </p>
                         <div className="tienda-confirm-actions">

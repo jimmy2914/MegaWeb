@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+/* eslint-disable react/prop-types */
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 const API_URL = 'http://localhost:3000/api/v1';
 
@@ -15,16 +16,13 @@ export const AuthProvider = ({ children }) => {
     const [token, setToken] = useState(() => localStorage.getItem('mp_token') || null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        if (token) {
-            fetchProfile();
-        } else {
-            setUser(null);
-            setLoading(false);
-        }
-    }, [token]);
+    const logout = useCallback(() => {
+        localStorage.removeItem('mp_token');
+        setToken(null);
+        setUser(null);
+    }, []);
 
-    const fetchProfile = async () => {
+    const fetchProfile = useCallback(async () => {
         setLoading(true);
         try {
             const res = await fetch(`${API_URL}/auth/profile`, {
@@ -42,7 +40,16 @@ export const AuthProvider = ({ children }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [token, logout]);
+
+    useEffect(() => {
+        if (token) {
+            fetchProfile();
+        } else {
+            setUser(null);
+            setLoading(false);
+        }
+    }, [token, fetchProfile]);
 
     const login = async (email, password) => {
         const res = await fetch(`${API_URL}/auth/login`, {
@@ -74,12 +81,6 @@ export const AuthProvider = ({ children }) => {
         setToken(data.accessToken);
         setUser(data.user);
         return data.user;
-    };
-
-    const logout = () => {
-        localStorage.removeItem('mp_token');
-        setToken(null);
-        setUser(null);
     };
 
     const navigateToLogin = (returnUrl) => {

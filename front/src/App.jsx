@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Nav from "./Nav";
 import Inicio from './Inicio';
 import Servicios from "./Servicios";
@@ -14,6 +14,7 @@ import CookieConsent from "./CookieConsent";
 import ReactGA from 'react-ga';
 import WhatsAppIcon from './WhatsAppIcon';
 import { AuthProvider } from './AuthContext';
+import { CartProvider } from './CartContext';
 
 function AppContent() {
     const [currentView, setCurrentView] = useState('inicio');
@@ -105,7 +106,9 @@ function AppContent() {
 function App() {
     return (
         <AuthProvider>
-            <AppContent />
+            <CartProvider>
+                <AppContent />
+            </CartProvider>
         </AuthProvider>
     );
 }
