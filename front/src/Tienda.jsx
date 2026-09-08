@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from './AuthContext';
 import './Tienda.css';
 
 const API_URL = 'http://localhost:3000/api/v1';
 
-// Normaliza errores de NestJS: message puede ser string o array (ValidationPipe)
 const parseApiError = (data) => {
     if (!data) return 'Error desconocido. Intenta de nuevo.';
     if (Array.isArray(data.message)) return data.message.join(' | ');
@@ -11,6 +11,8 @@ const parseApiError = (data) => {
 };
 
 function Tienda() {
+    const { user, token, navigateToLogin } = useAuth();
+
     // --- Estado de productos ---
     const [products, setProducts] = useState([]);
     const [filteredProducts, setFilteredProducts] = useState([]);
@@ -18,13 +20,12 @@ function Tienda() {
     const [loading, setLoading] = useState(true);
 
     // --- Estado del carrito ---
-    // El carrito se asocia al usuario autenticado. Clave: mp_cart_<userId>
-    // Si no hay sesión activa, el carrito inicia vacío y no se persiste.
     const [cart, setCart] = useState([]);
     const [showCartDrawer, setShowCartDrawer] = useState(false);
 
-    // Clave de localStorage según el usuario autenticado
-    const getCartKey = (userId) => userId ? `mp_cart_${userId}` : null;
+    // Claves de localStorage según el usuario
+    const getCartKey = (userId) => userId ? `mp_cart_${userId}` : 'mp_cart_guest';
+    const getCheckoutKey = (userId) => userId ? `mp_checkout_${userId}` : 'mp_checkout_guest';
 
     // --- Estado de checkout y modal ---
     const [showCheckoutModal, setShowCheckoutModal] = useState(false);
@@ -51,38 +52,75 @@ function Tienda() {
     const [addressPhone, setAddressPhone] = useState('');
     const [paymentMethod, setPaymentMethod] = useState('PAGOS_PSE');
 
-    // --- Autenticación rápida en checkout ---
-    const [token, setToken] = useState(localStorage.getItem('mp_token') || null);
-    const [user, setUser] = useState(null);
-    const [showAuthBox, setShowAuthBox] = useState(false);
-    const [loginEmail, setLoginEmail] = useState('');
-    const [loginPassword, setLoginPassword] = useState('');
-    const [authError, setAuthError] = useState('');
-
-    // --- Guardar carrito en localStorage vinculado al usuario ---
-    useEffect(() => {
-        if (!user?.id) return; // Sin sesión no persiste
-        const key = getCartKey(user.id);
-        localStorage.setItem(key, JSON.stringify(cart));
-    }, [cart, user?.id]);
-
     // --- Consultar productos al montar ---
     useEffect(() => {
         fetchProducts();
-        if (token) {
-            fetchProfile();
-        }
     }, []);
 
-    // --- Escuchar cambios de token: cargar perfil y carrito del usuario ---
+    // --- Cargar carrito y checkout según el usuario ---
     useEffect(() => {
-        if (token) {
-            fetchProfile();
+        const cartKey = getCartKey(user?.id);
+        const savedCart = localStorage.getItem(cartKey);
+
+        if (user?.id) {
+            // Fusionar carrito de invitado con el del usuario autenticado si existe
+            const guestCartStr = localStorage.getItem('mp_cart_guest');
+            let userCartItems = savedCart ? JSON.parse(savedCart) : [];
+
+            if (guestCartStr) {
+                try {
+                    const guestItems = JSON.parse(guestCartStr);
+                    guestItems.forEach(gItem => {
+                        const existingIndex = userCartItems.findIndex(uItem => uItem.id === gItem.id);
+                        if (existingIndex >= 0) {
+                            userCartItems[existingIndex].quantity += gItem.quantity;
+                        } else {
+                            userCartItems.push(gItem);
+                        }
+                    });
+                } catch (e) {
+                    console.error('Error al procesar carrito de invitado:', e);
+                }
+                localStorage.removeItem('mp_cart_guest');
+            }
+            setCart(userCartItems);
         } else {
-            setUser(null);
-            setCart([]); // Limpiar carrito en memoria al cerrar sesión
+            setCart(savedCart ? JSON.parse(savedCart) : []);
         }
-    }, [token]);
+
+        // Cargar proceso de compra / datos guardados
+        const checkoutKey = getCheckoutKey(user?.id);
+        const savedCheckout = localStorage.getItem(checkoutKey);
+        if (savedCheckout) {
+            try {
+                const parsed = JSON.parse(savedCheckout);
+                setAddressStreet(parsed.street || '');
+                setAddressCity(parsed.city || '');
+                setAddressDept(parsed.dept || '');
+                setAddressPhone(parsed.phone || '');
+                setPaymentMethod(parsed.paymentMethod || 'PAGOS_PSE');
+            } catch (e) {}
+        }
+    }, [user?.id]);
+
+    // --- Persistir carrito al cambiar ---
+    useEffect(() => {
+        const cartKey = getCartKey(user?.id);
+        localStorage.setItem(cartKey, JSON.stringify(cart));
+    }, [cart, user?.id]);
+
+    // --- Persistir proceso de compra / dirección al cambiar ---
+    useEffect(() => {
+        const checkoutKey = getCheckoutKey(user?.id);
+        const checkoutData = {
+            street: addressStreet,
+            city: addressCity,
+            dept: addressDept,
+            phone: addressPhone,
+            paymentMethod
+        };
+        localStorage.setItem(checkoutKey, JSON.stringify(checkoutData));
+    }, [addressStreet, addressCity, addressDept, addressPhone, paymentMethod, user?.id]);
 
     const fetchProducts = async () => {
         setLoading(true);
@@ -95,68 +133,6 @@ function Tienda() {
             console.error('Error al cargar productos', e);
         } finally {
             setLoading(false);
-        }
-    };
-
-    const fetchProfile = async () => {
-        try {
-            const res = await fetch(`${API_URL}/auth/profile`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setUser(data);
-
-                // Restaurar el carrito guardado para este usuario (al recargar la página con sesión activa)
-                const cartKey = getCartKey(data.id);
-                if (cartKey) {
-                    const savedCart = localStorage.getItem(cartKey);
-                    setCart(savedCart ? JSON.parse(savedCart) : []);
-                }
-            } else {
-                handleLogout();
-            }
-        } catch (e) {
-            handleLogout();
-        }
-    };
-
-    const handleLogout = () => {
-        localStorage.removeItem('mp_token');
-        setToken(null);
-        setUser(null);
-        setCart([]); // Limpiar carrito en memoria (el guardado del usuario queda intacto)
-    };
-
-    const handleLogin = async (e) => {
-        e.preventDefault();
-        setAuthError('');
-        try {
-            const res = await fetch(`${API_URL}/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: loginEmail, password: loginPassword })
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(parseApiError(data));
-            localStorage.setItem('mp_token', data.accessToken);
-            setToken(data.accessToken);
-            setUser(data.user);
-
-            // Cargar el carrito guardado del usuario que acaba de entrar
-            const cartKey = getCartKey(data.user?.id);
-            if (cartKey) {
-                const savedCart = localStorage.getItem(cartKey);
-                setCart(savedCart ? JSON.parse(savedCart) : []);
-            } else {
-                setCart([]);
-            }
-
-            setShowAuthBox(false);
-            setLoginEmail('');
-            setLoginPassword('');
-        } catch (err) {
-            setAuthError(err.message);
         }
     };
 
@@ -325,7 +301,7 @@ function Tienda() {
     const getShipping = () => {
         const sub = getSubtotal();
         if (sub === 0) return 0;
-        return sub > 1500000 ? 0 : 50000; // Envío gratis para compras grandes
+        return sub > 1500000 ? 0 : 50000;
     };
 
     const getTotal = () => {
@@ -337,12 +313,9 @@ function Tienda() {
         e.preventDefault();
         setOrderError('');
 
-        // Verificar token directamente del localStorage por si cambió en el foro
         const activeToken = localStorage.getItem('mp_token');
         if (!activeToken) {
-            setToken(null);
-            setUser(null);
-            setShowAuthBox(true);
+            setOrderError('Debes iniciar sesión para completar tu pedido.');
             return;
         }
 
@@ -378,11 +351,7 @@ function Tienda() {
             setOrderId(data.id);
             setCheckoutSuccess(true);
             setCart([]); // Vaciar carrito
-            // Limpiar formulario
-            setAddressStreet('');
-            setAddressCity('');
-            setAddressDept('');
-            setAddressPhone('');
+            localStorage.removeItem(getCartKey(user?.id));
         } catch (err) {
             setOrderError(err.message);
         } finally {
@@ -390,7 +359,6 @@ function Tienda() {
         }
     };
 
-    // --- Formateador de moneda ---
     const formatCurrency = (value) => {
         return new Intl.NumberFormat('es-CO', {
             style: 'currency',
@@ -418,6 +386,16 @@ function Tienda() {
                     Equipamiento solar y de iluminación inteligente de calidad industrial para tus proyectos de energía.
                 </p>
 
+                {/* Aviso de Inicio de Sesión si no está autenticado */}
+                {!user && (
+                    <div className="tienda-auth-banner">
+                        <span>💡 Inicia sesión para vincular y guardar tu carrito de compras y asegurar tu proceso de pedido.</span>
+                        <button className="tienda-btn-auth-banner" onClick={() => navigateToLogin('#tienda')}>
+                            Iniciar Sesión
+                        </button>
+                    </div>
+                )}
+
                 {/* Carrito Flotante Cabecera */}
                 <div className="tienda-cart-trigger-container">
                     <button className="tienda-cart-trigger" onClick={() => setShowCartDrawer(true)}>
@@ -430,9 +408,7 @@ function Tienda() {
                 </div>
             </div>
 
-            {/* ===================================================== */}
-            {/* BARRA DE ADMINISTRACIÓN (sólo ADMIN)                   */}
-            {/* ===================================================== */}
+            {/* BARRA DE ADMINISTRACIÓN (sólo ADMIN) */}
             {isAdmin && (
                 <div className="tienda-admin-bar">
                     <div className="tienda-admin-bar-info">
@@ -509,9 +485,7 @@ function Tienda() {
                 </div>
             )}
 
-            {/* ========================================================= */}
-            {/* CARRO LATERAL (DRAWER)                                     */}
-            {/* ========================================================= */}
+            {/* CARRO LATERAL (DRAWER) */}
             {showCartDrawer && (
                 <div className="tienda-drawer-overlay" onClick={() => setShowCartDrawer(false)}>
                     <div className="tienda-drawer" onClick={e => e.stopPropagation()}>
@@ -519,6 +493,12 @@ function Tienda() {
                             <h3>Tu Carrito</h3>
                             <button className="tienda-drawer-close" onClick={() => setShowCartDrawer(false)}>✕</button>
                         </div>
+
+                        {!user && (
+                            <div className="tienda-drawer-login-prompt">
+                                🔒 <button type="button" onClick={() => { setShowCartDrawer(false); navigateToLogin('#tienda'); }}>Inicia sesión</button> para guardar y conservar tu carrito.
+                            </div>
+                        )}
 
                         <div className="tienda-drawer-body">
                             {cart.length === 0 ? (
@@ -576,16 +556,7 @@ function Tienda() {
                                     className="tienda-btn-checkout"
                                     onClick={() => {
                                         setShowCartDrawer(false);
-                                        const activeToken = localStorage.getItem('mp_token');
-                                        if (activeToken) {
-                                            setToken(activeToken);
-                                            setShowCheckoutModal(true);
-                                        } else {
-                                            setToken(null);
-                                            setUser(null);
-                                            setShowCheckoutModal(true);
-                                            setShowAuthBox(true);
-                                        }
+                                        setShowCheckoutModal(true);
                                     }}
                                 >
                                     Proceder al Checkout
@@ -596,9 +567,7 @@ function Tienda() {
                 </div>
             )}
 
-            {/* ========================================================= */}
-            {/* MODAL DE CHECKOUT                                         */}
-            {/* ========================================================= */}
+            {/* MODAL DE CHECKOUT */}
             {showCheckoutModal && (
                 <div className="tienda-modal-overlay" onClick={() => { if (!checkoutLoading) { setShowCheckoutModal(false); setCheckoutSuccess(false); } }}>
                     <div className="tienda-modal" onClick={e => e.stopPropagation()}>
@@ -608,7 +577,7 @@ function Tienda() {
                             <div className="tienda-checkout-success">
                                 <div className="tienda-success-icon">🎉</div>
                                 <h3>¡Pedido Realizado con Éxito!</h3>
-                                <p>Tu orden ha sido registrada correctamente en nuestra base de datos PostgreSQL.</p>
+                                <p>Tu orden ha sido registrada correctamente.</p>
                                 <div className="tienda-order-tag">
                                     ID de la Orden: <code>{orderId}</code>
                                 </div>
@@ -625,40 +594,17 @@ function Tienda() {
                                     Seguir Comprando
                                 </button>
                             </div>
-                        ) : showAuthBox ? (
-                            <div className="tienda-checkout-auth">
-                                <h3>Iniciar Sesión</h3>
-                                <p className="tienda-auth-sub">Para procesar tu compra, necesitas ingresar a tu cuenta de la comunidad.</p>
-                                {authError && <div className="tienda-auth-error">{authError}</div>}
-                                <form onSubmit={handleLogin} className="tienda-auth-form">
-                                    <label>Correo Electrónico</label>
-                                    <input
-                                        type="email"
-                                        placeholder="correo@ejemplo.com"
-                                        value={loginEmail}
-                                        onChange={e => setLoginEmail(e.target.value)}
-                                        required
-                                    />
-                                    <label>Contraseña</label>
-                                    <input
-                                        type="password"
-                                        placeholder="••••••••"
-                                        value={loginPassword}
-                                        onChange={e => setLoginPassword(e.target.value)}
-                                        required
-                                    />
-                                    <button type="submit" className="tienda-btn-primary tienda-btn-full">
-                                        Iniciar Sesión
-                                    </button>
-                                </form>
-                                <p className="tienda-auth-switch-text">
-                                    ¿No tienes cuenta? Registrate primero en la sección de <a href="#foro" onClick={() => setShowCheckoutModal(false)}>Comunidad</a>.
-                                </p>
-                            </div>
                         ) : (
                             <div className="tienda-checkout-form-container">
                                 <h3>Finalizar Compra</h3>
-                                {user && <p className="tienda-checkout-welcome">Comprando como: <strong>{user.name}</strong> ({user.email})</p>}
+                                {user ? (
+                                    <p className="tienda-checkout-welcome">Comprando como: <strong>{user.name}</strong> ({user.email})</p>
+                                ) : (
+                                    <div className="tienda-checkout-guest-warning">
+                                        <span>⚠️ Estás realizando tu compra como invitado. <button type="button" onClick={() => { setShowCheckoutModal(false); navigateToLogin('#tienda'); }}>Inicia sesión</button> para asociar tu pedido y guardar tus datos.</span>
+                                    </div>
+                                )}
+                                
                                 {orderError && <div className="tienda-auth-error">{orderError}</div>}
 
                                 <form onSubmit={handleCheckoutSubmit} className="tienda-checkout-form">
@@ -754,13 +700,26 @@ function Tienda() {
                                         </div>
                                     </div>
 
-                                    <button
-                                        type="submit"
-                                        className="tienda-btn-primary tienda-btn-full"
-                                        disabled={checkoutLoading}
-                                    >
-                                        {checkoutLoading ? 'Procesando Pedido...' : `Confirmar Pedido (${formatCurrency(getTotal())})`}
-                                    </button>
+                                    {!user ? (
+                                        <button
+                                            type="button"
+                                            className="tienda-btn-primary tienda-btn-full"
+                                            onClick={() => {
+                                                setShowCheckoutModal(false);
+                                                navigateToLogin('#tienda');
+                                            }}
+                                        >
+                                            Inicia Sesión para Confirmar Pedido
+                                        </button>
+                                    ) : (
+                                        <button
+                                            type="submit"
+                                            className="tienda-btn-primary tienda-btn-full"
+                                            disabled={checkoutLoading}
+                                        >
+                                            {checkoutLoading ? 'Procesando Pedido...' : `Confirmar Pedido (${formatCurrency(getTotal())})`}
+                                        </button>
+                                    )}
                                 </form>
                             </div>
                         )}
@@ -768,9 +727,7 @@ function Tienda() {
                 </div>
             )}
 
-            {/* ===================================================== */}
-            {/* MODAL: CREAR / EDITAR PRODUCTO                         */}
-            {/* ===================================================== */}
+            {/* MODAL: CREAR / EDITAR PRODUCTO */}
             {showProductModal && (
                 <div className="tienda-product-modal-overlay" onClick={closeProductModal}>
                     <div className="tienda-product-modal" onClick={e => e.stopPropagation()}>
@@ -889,9 +846,7 @@ function Tienda() {
                 </div>
             )}
 
-            {/* ===================================================== */}
-            {/* MODAL: CONFIRMAR ELIMINACIÓN                           */}
-            {/* ===================================================== */}
+            {/* MODAL: CONFIRMAR ELIMINACIÓN */}
             {showConfirmDelete && deletingProduct && (
                 <div className="tienda-confirm-overlay" onClick={() => !deleteLoading && setShowConfirmDelete(false)}>
                     <div className="tienda-confirm-box" onClick={e => e.stopPropagation()}>
@@ -925,4 +880,3 @@ function Tienda() {
 }
 
 export default Tienda;
-

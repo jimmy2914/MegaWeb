@@ -5,7 +5,6 @@ html, body {
     box-sizing: border-box;
 }
 
-
 nav {
     display: flex;
     justify-content: space-between;
@@ -39,12 +38,15 @@ nav {
 .navbar-right ul {
     list-style: none;
     display: flex;
+    align-items: center; /* Centrado vertical de los ítems de navegación */
     margin: 0;
     padding: 0;
 }
 
 .navbar-right ul li {
     margin-right: 20px;
+    display: flex;
+    align-items: center; /* Alineación vertical */
 }
 
 .navbar-right ul li a {
@@ -52,12 +54,13 @@ nav {
     color: white;
     font-size: 16px;
     transition: color 0.3s ease;
+    display: inline-flex;
+    align-items: center;
 }
 
 .navbar-right ul li a:hover {
     color: #FFD700; 
 }
-
 
 .hamburger {
     display: none; 
@@ -76,7 +79,6 @@ nav {
 
 /* Media Query para pantallas pequeñas */
 @media (max-width: 768px) {
-    /* Oculta los enlaces en móviles por defecto */
     .navbar-right ul {
         position: absolute;
         top: 60px;
@@ -90,17 +92,14 @@ nav {
         transition: right 0.3s ease;
     }
 
-    /* Mostrar menú al abrir */
     .nav-links.open {
         right: 0;
     }
 
-    /* Diseño de las opciones de navegación en móvil */
     .navbar-right ul li {
-        margin: 20px 0;
+        margin: 18px 0;
     }
 
-    /* Mostrar el menú hamburguesa en móviles */
     .hamburger {
         display: flex;
         align-items: center;
@@ -108,13 +107,73 @@ nav {
         height: 40px; 
     }
 
-    /* Oculta el menú de navegación cuando el menú hamburguesa está presente */
     .navbar-right ul {
         display: none;
     }
 
-    /* Muestra el menú cuando se hace clic en el botón de hamburguesa */
     .navbar-right ul.nav-links.open {
         display: flex;
     }
+}
+
+/* Estilos de Iniciar Sesión y Usuario en la Nav */
+.nav-item-auth {
+    margin-left: 5px;
+    margin-right: 0 !important;
+}
+
+.nav-login-btn {
+    background-color: #FFD700 !important;
+    color: rgb(30, 45, 59) !important;
+    border: none !important;
+    padding: 8px 20px;
+    border-radius: 25px;
+    font-size: 15px;
+    font-weight: 700;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: all 0.25s ease !important;
+    cursor: pointer;
+}
+
+.nav-login-btn:hover {
+    background-color: #ffe033 !important;
+    color: rgb(30, 45, 59) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.nav-login-svg {
+    width: 16px;
+    height: 16px;
+    fill: rgb(30, 45, 59);
+    flex-shrink: 0;
+}
+
+.nav-user-link {
+    background-color: #FFD700 !important;
+    color: rgb(30, 45, 59) !important;
+    border: none !important;
+    padding: 8px 18px;
+    border-radius: 25px;
+    font-size: 15px;
+    font-weight: 700;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: all 0.25s ease !important;
+}
+
+.nav-user-link:hover {
+    background-color: #ffe033 !important;
+    color: rgb(30, 45, 59) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }

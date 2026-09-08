@@ -8,16 +8,17 @@ import Clientes from "./Clientes";
 import Tienda from "./Tienda";
 import CalculadoraSolar from "./CalculadoraSolar";
 import Foro from "./Foro";
+import Login from "./Login";
 import Footer from "./Footer";
 import CookieConsent from "./CookieConsent";
-import ReactGA from 'react-ga'; // Importar react-ga
+import ReactGA from 'react-ga';
 import WhatsAppIcon from './WhatsAppIcon';
+import { AuthProvider } from './AuthContext';
 
-function App() {
+function AppContent() {
     const [currentView, setCurrentView] = useState('inicio');
 
     useEffect(() => {
-        // Verifica el consentimiento de cookies antes de registrar la vista de la página
         if (document.cookie.includes('cookieConsent=true')) {
             ReactGA.pageview(window.location.pathname + window.location.search);
         }
@@ -32,19 +33,19 @@ function App() {
                 setCurrentView('calculadora');
             } else if (hash === '#foro') {
                 setCurrentView('foro');
+            } else if (hash === '#login' || hash === '#iniciar-sesion') {
+                setCurrentView('login');
             } else {
                 setCurrentView('inicio');
             }
         };
 
-        // Escuchar cambios de hash
         handleHashChange();
         window.addEventListener('hashchange', handleHashChange);
         return () => window.removeEventListener('hashchange', handleHashChange);
     }, []);
 
     useEffect(() => {
-        // Asegurar scroll suave cuando volvemos a la página principal y hay un hash de sección
         if (currentView === 'inicio') {
             const hash = window.location.hash;
             if (hash && hash !== '#inicio') {
@@ -58,42 +59,54 @@ function App() {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         } else {
-            // Scroll arriba al cambiar de vista
             window.scrollTo({ top: 0, behavior: 'auto' });
         }
     }, [currentView]);
 
     return (
-      <div className='container'>
-        <Nav />
-        {currentView === 'inicio' && (
-          <>
-            <Inicio />
-            <Servicios />
-            <Nosotros />
-            <Proyectos />
-            <Clientes />
-          </>
-        )}
-        {currentView === 'tienda' && (
-          <div className="page-view animate-fade-in">
-            <Tienda />
-          </div>
-        )}
-        {currentView === 'calculadora' && (
-          <div className="page-view animate-fade-in">
-            <CalculadoraSolar />
-          </div>
-        )}
-        {currentView === 'foro' && (
-          <div className="page-view animate-fade-in">
-            <Foro />
-          </div>
-        )}
-        <Footer />
-        <CookieConsent />
-        <WhatsAppIcon />
-      </div>
+        <div className='container'>
+            <Nav />
+            {currentView === 'inicio' && (
+                <>
+                    <Inicio />
+                    <Servicios />
+                    <Nosotros />
+                    <Proyectos />
+                    <Clientes />
+                </>
+            )}
+            {currentView === 'tienda' && (
+                <div className="page-view animate-fade-in">
+                    <Tienda />
+                </div>
+            )}
+            {currentView === 'calculadora' && (
+                <div className="page-view animate-fade-in">
+                    <CalculadoraSolar />
+                </div>
+            )}
+            {currentView === 'foro' && (
+                <div className="page-view animate-fade-in">
+                    <Foro />
+                </div>
+            )}
+            {currentView === 'login' && (
+                <div className="page-view animate-fade-in">
+                    <Login />
+                </div>
+            )}
+            <Footer />
+            <CookieConsent />
+            <WhatsAppIcon />
+        </div>
+    );
+}
+
+function App() {
+    return (
+        <AuthProvider>
+            <AppContent />
+        </AuthProvider>
     );
 }
 

@@ -1,0 +1,254 @@
+/* =========================================================
+   SECCIÓN DE INICIAR SESIÓN / MI CUENTA
+   Paleta: #1e2d3b (azul oscuro), #ffd700 (oro), #f9f9f9 (fondo claro)
+   ========================================================= */
+
+.auth-section {
+    padding: 100px 20px 80px 20px;
+    background-color: #f9f9f9;
+    text-align: center;
+    min-height: calc(100vh - 350px);
+    box-sizing: border-box;
+}
+
+/* --- Encabezado de Sección --- */
+.auth-header {
+    max-width: 900px;
+    margin: 0 auto 30px;
+}
+
+.auth-header h2 {
+    font-size: 2.5rem;
+    color: rgb(30, 45, 59);
+    margin-bottom: 10px;
+    position: relative;
+}
+
+.auth-header h2::after {
+    content: '';
+    display: block;
+    width: 60px;
+    height: 5px;
+    background-color: #ffd700;
+    margin: 10px auto;
+}
+
+.auth-subtitle {
+    font-size: 1.1rem;
+    color: #555;
+    margin-bottom: 24px;
+    line-height: 1.6;
+}
+
+/* --- Card del Formulario --- */
+.auth-card {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 36px 30px;
+    width: 100%;
+    max-width: 460px;
+    margin: 0 auto;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+    box-sizing: border-box;
+    text-align: left;
+}
+
+/* --- Pestañas --- */
+.auth-tabs {
+    display: flex;
+    border-bottom: 2px solid #eee;
+    margin-bottom: 24px;
+}
+
+.auth-tab {
+    flex: 1;
+    padding: 12px 16px;
+    background: transparent;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: #666;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.auth-tab:hover {
+    color: rgb(30, 45, 59);
+}
+
+.auth-tab--active {
+    color: rgb(30, 45, 59);
+    border-bottom-color: #ffd700;
+    font-weight: 700;
+}
+
+/* --- Alerta de Error --- */
+.auth-error-banner {
+    background-color: #ffeaea;
+    border: 1px solid #e74c3c;
+    color: #c0392b;
+    padding: 12px 14px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+/* --- Formulario --- */
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.auth-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.auth-form-group label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: rgb(30, 45, 59);
+}
+
+.auth-form-group input {
+    padding: 12px 14px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s ease;
+    box-sizing: border-box;
+    width: 100%;
+}
+
+.auth-form-group input:focus {
+    border-color: rgb(30, 45, 59);
+}
+
+/* --- Botones --- */
+.auth-btn-primary {
+    background-color: rgb(30, 45, 59);
+    color: #ffffff;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 6px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease, color 0.3s ease, transform 0.2s ease;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.auth-btn-primary:hover:not(:disabled) {
+    background-color: #ffd700;
+    color: rgb(30, 45, 59);
+    transform: translateY(-2px);
+}
+
+.auth-btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.auth-btn-secondary {
+    background-color: transparent;
+    color: rgb(30, 45, 59);
+    border: 2px solid rgb(30, 45, 59);
+    padding: 10px 22px;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.auth-btn-secondary:hover {
+    background-color: rgb(30, 45, 59);
+    color: #ffffff;
+}
+
+.auth-btn-full {
+    width: 100%;
+    margin-top: 6px;
+}
+
+.auth-footer-back {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.auth-link-back {
+    background: none;
+    border: none;
+    color: rgb(30, 45, 59);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline;
+    transition: color 0.2s ease;
+}
+
+.auth-link-back:hover {
+    color: #ffd700;
+}
+
+/* --- Tarjeta de Usuario Autenticado --- */
+.auth-logged-card {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.auth-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background-color: rgb(30, 45, 59);
+    color: #ffd700;
+    font-size: 2rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    border: 3px solid #ffd700;
+}
+
+.auth-logged-card h3 {
+    font-size: 1.5rem;
+    color: rgb(30, 45, 59);
+    margin: 0 0 4px 0;
+}
+
+.auth-user-email {
+    color: #666;
+    font-size: 0.95rem;
+    margin: 0 0 12px 0;
+}
+
+.auth-role-tag {
+    background-color: rgba(30, 45, 59, 0.08);
+    color: rgb(30, 45, 59);
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    border: 1px solid rgba(30, 45, 59, 0.2);
+    margin-bottom: 24px;
+}
+
+.auth-logged-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+}

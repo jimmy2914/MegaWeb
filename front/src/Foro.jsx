@@ -1,33 +1,17 @@
 import React, { useState, useEffect } from 'react';
+import { useAuth } from './AuthContext';
 import './Foro.css';
 
 const API_URL = 'http://localhost:3000/api/v1';
 
-// Normaliza errores de NestJS: message puede ser string o array (ValidationPipe)
 const parseApiError = (data) => {
     if (!data) return 'Error desconocido. Intenta de nuevo.';
     if (Array.isArray(data.message)) return data.message.join(' | ');
     return data.message || data.error || 'Error desconocido. Intenta de nuevo.';
 };
 
-
 function Foro() {
-    // --- Estado de autenticación ---
-    const [user, setUser] = useState(null);
-    const [token, setToken] = useState(localStorage.getItem('mp_token') || null);
-
-    // --- Estado del modal de login/registro ---
-    const [showModal, setShowModal] = useState(false);
-    const [modalTab, setModalTab] = useState('login'); // 'login' | 'register'
-
-    // --- Formulario de login ---
-    const [loginEmail, setLoginEmail] = useState('');
-    const [loginPassword, setLoginPassword] = useState('');
-
-    // --- Formulario de registro ---
-    const [regName, setRegName] = useState('');
-    const [regEmail, setRegEmail] = useState('');
-    const [regPassword, setRegPassword] = useState('');
+    const { user, token, logout, navigateToLogin } = useAuth();
 
     // --- Estado de hilos del foro ---
     const [threads, setThreads] = useState([]);
@@ -42,21 +26,10 @@ function Foro() {
     // --- Nueva respuesta ---
     const [newPostContent, setNewPostContent] = useState('');
 
-    // --- Mensajes de error/éxito ---
-    const [authError, setAuthError] = useState('');
-    const [authLoading, setAuthLoading] = useState(false);
-
     // --- Cargar hilos al montar ---
     useEffect(() => {
         fetchThreads();
     }, []);
-
-    // --- Cargar perfil si hay token ---
-    useEffect(() => {
-        if (token) {
-            fetchProfile();
-        }
-    }, [token]);
 
     // --- Cargar posts al seleccionar un hilo ---
     useEffect(() => {
@@ -85,83 +58,9 @@ function Foro() {
         }
     };
 
-    const fetchProfile = async () => {
-        try {
-            const res = await fetch(`${API_URL}/auth/profile`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setUser(data);
-            } else {
-                handleLogout();
-            }
-        } catch (e) {
-            handleLogout();
-        }
-    };
-
-    const handleLogin = async (e) => {
-        e.preventDefault();
-        setAuthError('');
-        setAuthLoading(true);
-        try {
-            const res = await fetch(`${API_URL}/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: loginEmail, password: loginPassword })
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(parseApiError(data));
-            localStorage.setItem('mp_token', data.accessToken);
-            setToken(data.accessToken);
-            setUser(data.user);
-            setShowModal(false);
-            setLoginEmail('');
-            setLoginPassword('');
-        } catch (err) {
-            setAuthError(err.message);
-        } finally {
-            setAuthLoading(false);
-        }
-    };
-
-    const handleRegister = async (e) => {
-        e.preventDefault();
-        setAuthError('');
-        setAuthLoading(true);
-        try {
-            const res = await fetch(`${API_URL}/auth/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: regName, email: regEmail, password: regPassword, role: 'CLIENT' })
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(parseApiError(data));
-            localStorage.setItem('mp_token', data.accessToken);
-            setToken(data.accessToken);
-            setUser(data.user);
-            setShowModal(false);
-            setRegName('');
-            setRegEmail('');
-            setRegPassword('');
-        } catch (err) {
-            setAuthError(err.message);
-        } finally {
-            setAuthLoading(false);
-        }
-    };
-
-    const handleLogout = () => {
-        localStorage.removeItem('mp_token');
-        setToken(null);
-        setUser(null);
-        setSelectedThread(null);
-    };
-
     const handleCreateThread = async (e) => {
         e.preventDefault();
-        if (!token) { setShowModal(true); return; }
+        if (!token) return;
         try {
             const res = await fetch(`${API_URL}/forum/threads`, {
                 method: 'POST',
@@ -169,12 +68,13 @@ function Foro() {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({ title: newThreadTitle, content: newThreadContent, categoryId: 'general' })
+                body: JSON.stringify({ title: newThreadTitle, content: newThreadContent })
             });
-            if (!res.ok) throw new Error('Error al crear el hilo');
+            const data = await res.json();
+            if (!res.ok) throw new Error(parseApiError(data));
+            setShowNewThread(false);
             setNewThreadTitle('');
             setNewThreadContent('');
-            setShowNewThread(false);
             fetchThreads();
         } catch (err) {
             alert(err.message);
@@ -183,7 +83,7 @@ function Foro() {
 
     const handleCreatePost = async (e) => {
         e.preventDefault();
-        if (!token) { setShowModal(true); return; }
+        if (!token || !selectedThread) return;
         try {
             const res = await fetch(`${API_URL}/forum/threads/${selectedThread.id}/posts`, {
                 method: 'POST',
@@ -193,7 +93,8 @@ function Foro() {
                 },
                 body: JSON.stringify({ content: newPostContent })
             });
-            if (!res.ok) throw new Error('Error al publicar');
+            const data = await res.json();
+            if (!res.ok) throw new Error(parseApiError(data));
             setNewPostContent('');
             fetchThread(selectedThread.id);
         } catch (err) {
@@ -203,19 +104,19 @@ function Foro() {
 
     const formatDate = (dateStr) => {
         if (!dateStr) return '';
-        const d = new Date(dateStr);
-        return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' });
-    };
-
-    const openModal = (tab) => {
-        setAuthError('');
-        setModalTab(tab);
-        setShowModal(true);
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('es-CO', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
     };
 
     return (
         <section id="foro" className="foro-section">
-            {/* Encabezado de la sección */}
+            {/* Encabezado */}
             <div className="foro-header">
                 <h2>Comunidad</h2>
                 <p className="foro-subtitle">
@@ -225,15 +126,15 @@ function Foro() {
                     {user ? (
                         <div className="foro-user-info">
                             <span className="foro-user-name">Hola, <strong>{user.name}</strong></span>
-                            <button className="foro-btn-secondary" onClick={handleLogout}>Cerrar sesión</button>
+                            <button className="foro-btn-secondary" onClick={logout}>Cerrar sesión</button>
                             <button className="foro-btn-primary" onClick={() => setShowNewThread(true)}>
                                 + Nuevo hilo
                             </button>
                         </div>
                     ) : (
                         <div className="foro-auth-buttons">
-                            <button className="foro-btn-secondary" onClick={() => openModal('login')}>Iniciar sesión</button>
-                            <button className="foro-btn-primary" onClick={() => openModal('register')}>Registrarse</button>
+                            <button className="foro-btn-secondary" onClick={() => navigateToLogin('#foro')}>Iniciar sesión</button>
+                            <button className="foro-btn-primary" onClick={() => navigateToLogin('#foro')}>Registrarse</button>
                         </div>
                     )}
                 </div>
@@ -252,7 +153,7 @@ function Foro() {
                                     Sé el primero en publicar
                                 </button>
                             ) : (
-                                <button className="foro-btn-primary" onClick={() => openModal('register')}>
+                                <button className="foro-btn-primary" onClick={() => navigateToLogin('#foro')}>
                                     Únete a la comunidad
                                 </button>
                             )}
@@ -332,7 +233,7 @@ function Foro() {
                             </form>
                         ) : (
                             <div className="foro-login-prompt">
-                                <p>Para responder, debes <button className="foro-link-btn" onClick={() => openModal('login')}>iniciar sesión</button> o <button className="foro-link-btn" onClick={() => openModal('register')}>registrarte</button>.</p>
+                                <p>Para responder, debes <button className="foro-link-btn" onClick={() => navigateToLogin('#foro')}>iniciar sesión</button> o <button className="foro-link-btn" onClick={() => navigateToLogin('#foro')}>registrarte</button>.</p>
                             </div>
                         )}
                     </div>
@@ -366,122 +267,6 @@ function Foro() {
                             />
                             <button type="submit" className="foro-btn-primary foro-btn-full">Publicar hilo</button>
                         </form>
-                    </div>
-                </div>
-            )}
-
-            {/* Modal login/registro */}
-            {showModal && (
-                <div className="foro-modal-overlay" onClick={() => setShowModal(false)}>
-                    <div className="foro-modal" onClick={e => e.stopPropagation()}>
-                        <button className="foro-modal-close" onClick={() => setShowModal(false)}>✕</button>
-
-                        {/* Pestañas */}
-                        <div className="foro-modal-tabs">
-                            <button
-                                className={`foro-tab ${modalTab === 'login' ? 'foro-tab--active' : ''}`}
-                                onClick={() => { setModalTab('login'); setAuthError(''); }}
-                            >
-                                Iniciar sesión
-                            </button>
-                            <button
-                                className={`foro-tab ${modalTab === 'register' ? 'foro-tab--active' : ''}`}
-                                onClick={() => { setModalTab('register'); setAuthError(''); }}
-                            >
-                                Registrarse
-                            </button>
-                        </div>
-
-                        {authError && <p className="foro-auth-error">{authError}</p>}
-
-                        {/* Formulario login */}
-                        {modalTab === 'login' && (
-                            <form className="foro-modal-form" onSubmit={handleLogin}>
-                                <label className="foro-label">Correo electrónico</label>
-                                <input
-                                    className="foro-input"
-                                    type="email"
-                                    placeholder="correo@ejemplo.com"
-                                    value={loginEmail}
-                                    onChange={e => setLoginEmail(e.target.value)}
-                                    required
-                                    autoComplete="email"
-                                />
-                                <label className="foro-label">Contraseña</label>
-                                <input
-                                    className="foro-input"
-                                    type="password"
-                                    placeholder="••••••••"
-                                    value={loginPassword}
-                                    onChange={e => setLoginPassword(e.target.value)}
-                                    required
-                                    autoComplete="current-password"
-                                />
-                                <button
-                                    type="submit"
-                                    className="foro-btn-primary foro-btn-full"
-                                    disabled={authLoading}
-                                >
-                                    {authLoading ? 'Ingresando...' : 'Iniciar sesión'}
-                                </button>
-                                <p className="foro-modal-switch">
-                                    ¿No tienes cuenta?{' '}
-                                    <button type="button" className="foro-link-btn" onClick={() => { setModalTab('register'); setAuthError(''); }}>
-                                        Regístrate
-                                    </button>
-                                </p>
-                            </form>
-                        )}
-
-                        {/* Formulario registro */}
-                        {modalTab === 'register' && (
-                            <form className="foro-modal-form" onSubmit={handleRegister}>
-                                <label className="foro-label">Nombre completo</label>
-                                <input
-                                    className="foro-input"
-                                    type="text"
-                                    placeholder="Tu nombre"
-                                    value={regName}
-                                    onChange={e => setRegName(e.target.value)}
-                                    required
-                                    autoComplete="name"
-                                />
-                                <label className="foro-label">Correo electrónico</label>
-                                <input
-                                    className="foro-input"
-                                    type="email"
-                                    placeholder="correo@ejemplo.com"
-                                    value={regEmail}
-                                    onChange={e => setRegEmail(e.target.value)}
-                                    required
-                                    autoComplete="email"
-                                />
-                                <label className="foro-label">Contraseña</label>
-                                <input
-                                    className="foro-input"
-                                    type="password"
-                                    placeholder="Mínimo 8 caracteres"
-                                    value={regPassword}
-                                    onChange={e => setRegPassword(e.target.value)}
-                                    required
-                                    minLength={8}
-                                    autoComplete="new-password"
-                                />
-                                <button
-                                    type="submit"
-                                    className="foro-btn-primary foro-btn-full"
-                                    disabled={authLoading}
-                                >
-                                    {authLoading ? 'Creando cuenta...' : 'Crear cuenta'}
-                                </button>
-                                <p className="foro-modal-switch">
-                                    ¿Ya tienes cuenta?{' '}
-                                    <button type="button" className="foro-link-btn" onClick={() => { setModalTab('login'); setAuthError(''); }}>
-                                        Inicia sesión
-                                    </button>
-                                </p>
-                            </form>
-                        )}
                     </div>
                 </div>
             )}

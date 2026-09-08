@@ -1171,3 +1171,88 @@
         flex-direction: column-reverse;
     }
 }
+
+/* --- Estilos para avisos de Autenticación en Tienda --- */
+.tienda-auth-banner {
+    background-color: rgba(30, 45, 59, 0.05);
+    border: 1px solid rgba(30, 45, 59, 0.2);
+    border-radius: 10px;
+    padding: 12px 20px;
+    margin: 16px auto 0 auto;
+    max-width: 750px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    color: rgb(30, 45, 59);
+    font-size: 0.92rem;
+    font-weight: 500;
+}
+
+.tienda-btn-auth-banner {
+    background-color: rgb(30, 45, 59);
+    color: #ffffff;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-size: 0.88rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.25s ease;
+}
+
+.tienda-btn-auth-banner:hover {
+    background-color: #ffd700;
+    color: rgb(30, 45, 59);
+    transform: translateY(-1px);
+}
+
+.tienda-drawer-login-prompt {
+    background-color: rgba(30, 45, 59, 0.06);
+    border-bottom: 1px solid rgba(30, 45, 59, 0.12);
+    padding: 10px 16px;
+    font-size: 0.88rem;
+    color: rgb(30, 45, 59);
+    text-align: center;
+    font-weight: 500;
+}
+
+.tienda-drawer-login-prompt button {
+    background: none;
+    border: none;
+    color: rgb(30, 45, 59);
+    font-weight: 700;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 0;
+}
+
+.tienda-drawer-login-prompt button:hover {
+    color: #ffd700;
+}
+
+.tienda-checkout-guest-warning {
+    background-color: #fffbe6;
+    border: 1px solid #ffe58f;
+    color: #d48806;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    margin-bottom: 16px;
+}
+
+.tienda-checkout-guest-warning button {
+    background: none;
+    border: none;
+    color: rgb(30, 45, 59);
+    font-weight: 700;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.tienda-checkout-guest-warning button:hover {
+    color: #d48806;
+}
+
+
