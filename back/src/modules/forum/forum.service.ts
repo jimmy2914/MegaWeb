@@ -20,8 +20,13 @@ export class ForumService {
     return { categories: dbCategories.map(c => c.name) };
   }
 
-  async listThreads() {
+  async listThreads(includeUnapproved = false, authorId?: string) {
     const threads = await this.prisma.thread.findMany({
+      where: authorId
+        ? { authorId }
+        : includeUnapproved
+          ? undefined
+          : { approved: true },
       include: {
         category: true,
         author: {
@@ -33,7 +38,7 @@ export class ForumService {
     return { threads, total: threads.length, page: 1, limit: threads.length };
   }
 
-  async getThread(id: string) {
+  async getThread(id: string, includeUnapproved = false, authorId?: string) {
     const thread = await this.prisma.thread.findUnique({
       where: { id },
       include: {
@@ -43,9 +48,11 @@ export class ForumService {
         }
       }
     });
-    if (!thread) throw new NotFoundException('Thread not found');
+    if (!thread || (!includeUnapproved && !thread.approved) || (authorId && thread.authorId !== authorId)) {
+      throw new NotFoundException('Thread not found');
+    }
     const posts = await this.prisma.post.findMany({
-      where: { threadId: id },
+      where: includeUnapproved ? { threadId: id } : { threadId: id, approved: true },
       include: {
         author: {
           select: { id: true, name: true, email: true, role: true }
@@ -71,6 +78,7 @@ export class ForumService {
         categoryId: catId,
         authorId: data.authorId,
         status: 'OPEN'
+        , approved: false
       }
     });
   }
@@ -78,14 +86,37 @@ export class ForumService {
   async createPost(threadId: string, data: any) {
     const thread = await this.prisma.thread.findUnique({ where: { id: threadId } });
     if (!thread) throw new NotFoundException('Thread not found');
+    if (thread.status === 'CLOSED') throw new Error('Thread is closed');
 
     return this.prisma.post.create({
       data: {
         content: data.content,
         threadId,
-        authorId: data.authorId
+        authorId: data.authorId,
+        approved: false
       }
     });
+  }
+
+  async updateThreadStatus(id: string, status: string) {
+    if (!['OPEN', 'CLOSED'].includes(status)) {
+      throw new Error('Invalid thread status');
+    }
+    const thread = await this.prisma.thread.findUnique({ where: { id } });
+    if (!thread) throw new NotFoundException('Thread not found');
+    return this.prisma.thread.update({ where: { id }, data: { status } });
+  }
+
+  async setThreadApproval(id: string, approved: boolean) {
+    const thread = await this.prisma.thread.findUnique({ where: { id } });
+    if (!thread) throw new NotFoundException('Thread not found');
+    return this.prisma.thread.update({ where: { id }, data: { approved: Boolean(approved) } });
+  }
+
+  async setPostApproval(id: string, approved: boolean) {
+    const post = await this.prisma.post.findUnique({ where: { id } });
+    if (!post) throw new NotFoundException('Post not found');
+    return this.prisma.post.update({ where: { id }, data: { approved: Boolean(approved) } });
   }
 
   reactPost(postId: string, data: any) {

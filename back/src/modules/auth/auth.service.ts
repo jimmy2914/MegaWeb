@@ -1,5 +1,6 @@
 import { Injectable, UnauthorizedException, ConflictException, InternalServerErrorException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -10,7 +11,7 @@ export class AuthService {
 
   async validateUser(email: string, password: string) {
     const user = await this.usersService.findByEmail(email);
-    if (user && user.password === password) {
+    if (user && await bcrypt.compare(password, user.password)) {
       const { password: _password, ...result } = user;
       return result;
     }
@@ -24,15 +25,16 @@ export class AuthService {
       throw new UnauthorizedException('No existe una cuenta registrada con ese correo electrónico.');
     }
 
-    if (user.password !== loginDto.password) {
+    if (!(await bcrypt.compare(loginDto.password, user.password))) {
       throw new UnauthorizedException('Contraseña incorrecta. Por favor verifica tus credenciales.');
     }
 
+    const { password: _password, ...safeUser } = user;
     const payload = { sub: user.id, email: user.email, role: user.role };
     return {
       accessToken: this.jwtService.sign(payload),
       refreshToken: this.jwtService.sign(payload, { expiresIn: '7d' }),
-      user,
+      user: safeUser,
     };
   }
 
@@ -44,10 +46,13 @@ export class AuthService {
     }
 
     try {
-      const user = await this.usersService.create(registerDto);
+      const user = await this.usersService.create({
+        ...registerDto,
+      });
+      const { password: _password, ...safeUser } = user;
       const payload = { sub: user.id, email: user.email, role: user.role };
       return {
-        user,
+        user: safeUser,
         accessToken: this.jwtService.sign(payload),
         refreshToken: this.jwtService.sign(payload, { expiresIn: '7d' }),
       };

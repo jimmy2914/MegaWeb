@@ -20,12 +20,40 @@ export class ForumController {
 
   @Get('threads')
   listThreads() {
-    return this.forumService.listThreads();
+    return this.forumService.listThreads(false);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Get('admin/threads')
+  listAdminThreads() {
+    return this.forumService.listThreads(true);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('CLIENT', 'FORUM_USER', 'ADMIN')
+  @Get('my-threads')
+  listMyThreads(@Req() req: any) {
+    return this.forumService.listThreads(true, req.user.id);
   }
 
   @Get('threads/:id')
   getThread(@Param('id') id: string) {
-    return this.forumService.getThread(id);
+    return this.forumService.getThread(id, false);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Get('admin/threads/:id')
+  getAdminThread(@Param('id') id: string) {
+    return this.forumService.getThread(id, true);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('CLIENT', 'FORUM_USER', 'ADMIN')
+  @Get('my-threads/:id')
+  getMyThread(@Req() req: any, @Param('id') id: string) {
+    return this.forumService.getThread(id, true, req.user.id);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -40,6 +68,27 @@ export class ForumController {
   @Post('threads/:threadId/posts')
   createPost(@Req() req: any, @Param('threadId') threadId: string, @Body() dto: CreatePostDto) {
     return this.forumService.createPost(threadId, { ...dto, authorId: req.user.id });
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Put('threads/:id/status')
+  updateThreadStatus(@Param('id') id: string, @Body() body: { status: string }) {
+    return this.forumService.updateThreadStatus(id, body.status);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Put('threads/:id/approval')
+  approveThread(@Param('id') id: string, @Body() body: { approved: boolean }) {
+    return this.forumService.setThreadApproval(id, body.approved);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Put('posts/:id/approval')
+  approvePost(@Param('id') id: string, @Body() body: { approved: boolean }) {
+    return this.forumService.setPostApproval(id, body.approved);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

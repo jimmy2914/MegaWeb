@@ -10,11 +10,15 @@ import { Response } from 'express';
 export class SolarCalculatorController {
   constructor(private solarService: SolarCalculatorService) {}
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   @Post('calculate')
   calculate(@Body() dto: any) {
     return this.solarService.calculate(dto);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   @Post('export-pdf')
   async exportPdf(@Body() dto: ExportPdfDto, @Res() res: Response) {
     const pdfBuffer = await this.solarService.exportPdf(dto);
