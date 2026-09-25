@@ -46,6 +46,7 @@ model Thread {
   title      String
   content    String
   status     String   @default("OPEN")
+  approved   Boolean  @default(false)
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
   authorId   String
@@ -59,6 +60,7 @@ model Post {
   id        String   @id @default(cuid())
   content   String
   threadId  String
+  approved  Boolean  @default(false)
   thread    Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
   authorId  String
   author    User     @relation(fields: [authorId], references: [id])

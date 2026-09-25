@@ -1,9 +1,11 @@
 import { useState } from 'react';
+import { useAuth } from './AuthContext';
 import './CalculadoraSolar.css';
 
 const API_URL = 'http://localhost:3000/api/v1';
 
 function CalculadoraSolar() {
+  const { token } = useAuth();
   // Cliente Inputs
   const [cliente, setCliente] = useState({
     nombre: '',
@@ -121,7 +123,10 @@ function CalculadoraSolar() {
 
       const res = await fetch(`${API_URL}/solar/calculate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(payload),
       });
 
@@ -170,7 +175,10 @@ function CalculadoraSolar() {
     try {
       const res = await fetch(`${API_URL}/solar/export-pdf`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(payload),
       });
 
@@ -290,7 +298,7 @@ function CalculadoraSolar() {
 
               <div className="form-row-custom">
                 <div className="form-group-custom">
-                  <label>Prof. de Descarga (%)</label>
+                  <label>Uso útil de la batería (%)</label>
                   <input
                     type="number"
                     name="profundidad_descarga"

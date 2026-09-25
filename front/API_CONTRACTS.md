@@ -89,6 +89,7 @@ export interface ForumThread {
   content: string;
   tags: string[];
   status: 'OPEN' | 'CLOSED' | 'ANSWERED';
+  approved: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -98,9 +99,19 @@ export interface ForumPost {
   threadId: string;
   authorId: string;
   content: string;
+  approved: boolean;
   createdAt: string;
   updatedAt: string;
 }
+
+// Moderación ADMIN
+// GET /forum/admin/threads
+// GET /forum/admin/threads/:id
+// GET /forum/my-threads
+// GET /forum/my-threads/:id
+// PUT /forum/threads/:id/status { status: 'OPEN' | 'CLOSED' }
+// PUT /forum/threads/:id/approval { approved: boolean }
+// PUT /forum/posts/:id/approval { approved: boolean }
 
 export interface Reaction {
   id: string;

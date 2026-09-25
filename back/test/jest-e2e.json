@@ -1,0 +1,11 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": "..",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": ["ts-jest", { "diagnostics": { "exclude": ["**/forum.service.ts"] } }]
+  },
+  "testEnvironment": "node",
+  "setupFiles": ["<rootDir>/test/env.setup.ts"],
+  "testTimeout": 30000
+}

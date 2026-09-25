@@ -12,6 +12,7 @@ const parseApiError = (data) => {
 
 function Foro() {
     const { user, token, logout, navigateToLogin } = useAuth();
+    const isAdmin = user?.role === 'ADMIN';
 
     // --- Estado de hilos del foro ---
     const [threads, setThreads] = useState([]);
@@ -22,6 +23,7 @@ function Foro() {
     const [showNewThread, setShowNewThread] = useState(false);
     const [newThreadTitle, setNewThreadTitle] = useState('');
     const [newThreadContent, setNewThreadContent] = useState('');
+    const [threadNotice, setThreadNotice] = useState('');
 
     // --- Nueva respuesta ---
     const [newPostContent, setNewPostContent] = useState('');
@@ -29,20 +31,36 @@ function Foro() {
     // --- Cargar hilos al montar ---
     useEffect(() => {
         fetchThreads();
-    }, []);
+    }, [isAdmin]);
 
     // --- Cargar posts al seleccionar un hilo ---
     useEffect(() => {
         if (selectedThread) {
             fetchThread(selectedThread.id);
         }
-    }, [selectedThread]);
+    }, [selectedThread, isAdmin]);
 
     const fetchThreads = async () => {
         try {
-            const res = await fetch(`${API_URL}/forum/threads`);
-            const data = await res.json();
-            setThreads(data.threads || []);
+            const publicRequest = fetch(`${API_URL}/forum/threads`);
+            if (isAdmin) {
+                const res = await fetch(`${API_URL}/forum/admin/threads`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const data = await res.json();
+                setThreads(data.threads || []);
+                return;
+            }
+            const requests = [publicRequest];
+            if (token) {
+                requests.push(fetch(`${API_URL}/forum/my-threads`, {
+                    headers: { Authorization: `Bearer ${token}` }
+                }));
+            }
+            const responses = await Promise.all(requests);
+            const lists = await Promise.all(responses.map(response => response.json()));
+            const merged = [...(lists[0].threads || []), ...(lists[1]?.threads || [])];
+            setThreads(Array.from(new Map(merged.map(thread => [thread.id, thread])).values()));
         } catch {
             setThreads([]);
         }
@@ -50,7 +68,15 @@ function Foro() {
 
     const fetchThread = async (id) => {
         try {
-            const res = await fetch(`${API_URL}/forum/threads/${id}`);
+            const isOwnThread = selectedThread?.authorId === user?.id;
+            const endpoint = isAdmin
+                ? `/forum/admin/threads/${id}`
+                : isOwnThread
+                    ? `/forum/my-threads/${id}`
+                    : `/forum/threads/${id}`;
+            const res = await fetch(`${API_URL}${endpoint}`, {
+                headers: isAdmin || isOwnThread ? { Authorization: `Bearer ${token}` } : undefined
+            });
             const data = await res.json();
             setThreadPosts(data.posts || []);
         } catch {
@@ -68,18 +94,54 @@ function Foro() {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`
                 },
-                body: JSON.stringify({ title: newThreadTitle, content: newThreadContent })
+                body: JSON.stringify({ title: newThreadTitle, content: newThreadContent, categoryId: 'general' })
             });
             const data = await res.json();
             if (!res.ok) throw new Error(parseApiError(data));
             setShowNewThread(false);
             setNewThreadTitle('');
             setNewThreadContent('');
-            fetchThreads();
+            setThreadNotice('Tu hilo fue publicado y pasará a revisión por un administrador antes de ser aprobado.');
+            await fetchThreads();
+            setSelectedThread(data);
         } catch (err) {
             alert(err.message);
         }
     };
+
+    const moderate = async (path, body) => {
+        try {
+            const res = await fetch(`${API_URL}${path}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                },
+                body: JSON.stringify(body)
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(parseApiError(data));
+            await fetchThreads();
+            if (selectedThread) await fetchThread(selectedThread.id);
+        } catch (err) {
+            alert(err.message);
+        }
+    };
+
+    const toggleThreadStatus = (thread) => moderate(
+        `/forum/threads/${thread.id}/status`,
+        { status: thread.status === 'CLOSED' ? 'OPEN' : 'CLOSED' }
+    );
+
+    const toggleThreadApproval = (thread) => moderate(
+        `/forum/threads/${thread.id}/approval`,
+        { approved: !thread.approved }
+    );
+
+    const togglePostApproval = (post) => moderate(
+        `/forum/posts/${post.id}/approval`,
+        { approved: !post.approved }
+    );
 
     const handleCreatePost = async (e) => {
         e.preventDefault();
@@ -138,6 +200,8 @@ function Foro() {
                         </div>
                     )}
                 </div>
+                {isAdmin && <div className="foro-admin-banner">Vista de moderación: revisa y valida el contenido de la comunidad.</div>}
+                {threadNotice && <div className="foro-review-notice">{threadNotice}</div>}
             </div>
 
             {/* Cuerpo del foro */}
@@ -166,15 +230,26 @@ function Foro() {
                                 onClick={() => setSelectedThread(thread)}
                             >
                                 <div className="foro-thread-card-top">
-                                    <span className={`foro-thread-status foro-thread-status--${(thread.status || 'OPEN').toLowerCase()}`}>
-                                        {thread.status === 'CLOSED' ? 'Cerrado' : 'Abierto'}
-                                    </span>
+                                    <div className="foro-thread-badges">
+                                        <span className={`foro-thread-status foro-thread-status--${!thread.approved ? 'pending' : (thread.status || 'OPEN').toLowerCase()}`}>
+                                            {!thread.approved ? 'Pendiente de aprobación' : thread.status === 'CLOSED' ? 'Cerrado' : 'Abierto'}
+                                        </span>
+                                        {thread.approved && <span className="foro-verified-badge">✓ Verificado</span>}
+                                    </div>
                                     <span className="foro-thread-date">{formatDate(thread.createdAt)}</span>
                                 </div>
                                 <h3 className="foro-thread-title">{thread.title}</h3>
                                 <p className="foro-thread-preview">{thread.content?.substring(0, 120)}{thread.content?.length > 120 ? '…' : ''}</p>
                                 <div className="foro-thread-card-bottom">
                                     <span className="foro-thread-author">Por: <strong>{thread.author?.name || 'Usuario'}</strong></span>
+                                    {isAdmin && <div className="foro-moderation-actions" onClick={e => e.stopPropagation()}>
+                                        <button className="foro-moderation-btn" onClick={() => toggleThreadApproval(thread)}>
+                                            {thread.approved ? 'Quitar aprobación' : 'Aprobar hilo'}
+                                        </button>
+                                        <button className="foro-moderation-btn" onClick={() => toggleThreadStatus(thread)}>
+                                            {thread.status === 'CLOSED' ? 'Abrir hilo' : 'Cerrar hilo'}
+                                        </button>
+                                    </div>}
                                 </div>
                             </div>
                         ))
@@ -187,7 +262,18 @@ function Foro() {
                         <button className="foro-back-btn" onClick={() => { setSelectedThread(null); setThreadPosts([]); }}>
                             ← Volver
                         </button>
-                        <h3 className="foro-detail-title">{selectedThread.title}</h3>
+                        <div className="foro-detail-heading">
+                            <h3 className="foro-detail-title">{selectedThread.title}</h3>
+                            {selectedThread.approved && <span className="foro-verified-badge">✓ Verificado</span>}
+                        </div>
+                        {isAdmin && <div className="foro-moderation-actions">
+                            <button className="foro-moderation-btn" onClick={() => toggleThreadApproval(selectedThread)}>
+                                {selectedThread.approved ? 'Quitar aprobación del hilo' : 'Aprobar hilo'}
+                            </button>
+                            <button className="foro-moderation-btn" onClick={() => toggleThreadStatus(selectedThread)}>
+                                {selectedThread.status === 'CLOSED' ? 'Abrir hilo' : 'Cerrar hilo'}
+                            </button>
+                        </div>}
                         <div className="foro-detail-original">
                             <p>{selectedThread.content}</p>
                             <div className="foro-detail-meta">
@@ -208,10 +294,13 @@ function Foro() {
                                         </div>
                                         <div className="foro-post-body">
                                             <div className="foro-post-header">
-                                                <span className="foro-post-author-name">{post.author?.name || 'Usuario'}</span>
+                                                <span className="foro-post-author-name">{post.author?.name || 'Usuario'} {post.approved && <span className="foro-verified-badge">✓</span>}</span>
                                                 <span className="foro-post-date">{formatDate(post.createdAt)}</span>
                                             </div>
                                             <p className="foro-post-content">{post.content}</p>
+                                            {isAdmin && <button className="foro-moderation-btn" onClick={() => togglePostApproval(post)}>
+                                                {post.approved ? 'Quitar aprobación' : 'Aprobar respuesta'}
+                                            </button>}
                                         </div>
                                     </div>
                                 ))
@@ -219,7 +308,9 @@ function Foro() {
                         </div>
 
                         {/* Formulario de nueva respuesta */}
-                        {user ? (
+                        {selectedThread.status === 'CLOSED' ? (
+                            <p className="foro-no-posts">Este hilo está cerrado y no admite nuevas respuestas.</p>
+                        ) : user ? (
                             <form className="foro-reply-form" onSubmit={handleCreatePost}>
                                 <textarea
                                     className="foro-textarea"

@@ -13,11 +13,13 @@ import Footer from "./Footer";
 import CookieConsent from "./CookieConsent";
 import ReactGA from 'react-ga';
 import WhatsAppIcon from './WhatsAppIcon';
-import { AuthProvider } from './AuthContext';
+import { AuthProvider, useAuth } from './AuthContext';
 import { CartProvider } from './CartContext';
 
 function AppContent() {
     const [currentView, setCurrentView] = useState('inicio');
+    const { user, loading } = useAuth();
+    const isAdmin = user?.role === 'ADMIN';
 
     useEffect(() => {
         if (document.cookie.includes('cookieConsent=true')) {
@@ -31,7 +33,7 @@ function AppContent() {
             if (hash === '#tienda') {
                 setCurrentView('tienda');
             } else if (hash === '#calculadora') {
-                setCurrentView('calculadora');
+                setCurrentView(isAdmin ? 'calculadora' : 'inicio');
             } else if (hash === '#foro') {
                 setCurrentView('foro');
             } else if (hash === '#login' || hash === '#iniciar-sesion') {
@@ -44,7 +46,13 @@ function AppContent() {
         handleHashChange();
         window.addEventListener('hashchange', handleHashChange);
         return () => window.removeEventListener('hashchange', handleHashChange);
-    }, []);
+    }, [isAdmin]);
+
+    useEffect(() => {
+        if (!loading && window.location.hash === '#calculadora' && !isAdmin) {
+            window.location.hash = '#inicio';
+        }
+    }, [isAdmin, loading]);
 
     useEffect(() => {
         if (currentView === 'inicio') {
@@ -81,7 +89,7 @@ function AppContent() {
                     <Tienda />
                 </div>
             )}
-            {currentView === 'calculadora' && (
+            {currentView === 'calculadora' && isAdmin && (
                 <div className="page-view animate-fade-in">
                     <CalculadoraSolar />
                 </div>

@@ -5,6 +5,7 @@ import './Nav.css';
 function Nav() {
     const [isOpen, setIsOpen] = useState(false);
     const { user, navigateToLogin } = useAuth();
+    const isAdmin = user?.role === 'ADMIN';
 
     const toggleMenu = () => {
         setIsOpen(!isOpen);
@@ -33,7 +34,7 @@ function Nav() {
                     <li><a href="#nosotros" onClick={handleLinkClick}>Nosotros</a></li>
                     <li><a href="#proyectos" onClick={handleLinkClick}>Proyectos</a></li>
                     <li><a href="#tienda" onClick={handleLinkClick}>Tienda</a></li>
-                    <li><a href="#calculadora" onClick={handleLinkClick}>Calculadora</a></li>
+                    {isAdmin && <li><a href="#calculadora" onClick={handleLinkClick}>Calculadora</a></li>}
                     <li><a href="#foro" onClick={handleLinkClick}>Comunidad</a></li>
                     <li><a href="https://webmail.megaproyectos.net/SOGo/" target="_blank" rel="noopener noreferrer" onClick={handleLinkClick}>Correo</a></li>
                     <li><a href="https://megaproyectos.net/Soporte/upload/" target="_blank" rel="noopener noreferrer" onClick={handleLinkClick}>Soporte</a></li>
