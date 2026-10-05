@@ -1,0 +1,72 @@
+.footer {
+    background-color: #1c2b36;
+    padding: 10px 20px;
+    color: white;
+    text-align: center;
+    margin: 0%;
+}
+
+.footer-container {
+    display: flex;
+    justify-content: space-between; 
+    align-items: center;
+    flex-wrap: wrap; 
+    padding: 10px 0; 
+}
+
+.footer-logo {
+    text-align: center;
+}
+
+.footer-logo img {
+    max-width: 150px;
+    max-height: 70px;
+}
+
+.footer-contact {
+    display: flex;
+    flex-direction: column; 
+    align-items: center; 
+    gap: 5px; 
+}
+
+.footer-contact a {
+    color: #fff;
+    text-decoration: none; 
+    font-size: 1.6rem; 
+    transition: color 0.3s ease; 
+}
+
+.footer-contact a:hover {
+    color: #ffd700; 
+}
+
+.footer-social {
+    display: flex;
+    gap: 20px; 
+}
+
+.footer-social a {
+    color: #fff;
+    font-size: 2rem; 
+    transition: color 0.3s ease;
+}
+
+.footer-social a:hover {
+    color: #ffd700; 
+}
+
+.footer-rights {
+    margin-top: 0px;
+}
+
+/* Estilos responsivos para pantallas más pequeñas */
+@media (max-width: 768px) {
+    .footer-container {
+        flex-direction: column; /* Coloca los elementos en columna en móviles */
+        gap: 10px;
+    }
+    .footer-contact a, .footer-social a {
+        font-size: 1.5rem; /* Reducimos el tamaño de los iconos en móviles */
+    }
+}

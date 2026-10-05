@@ -1,0 +1,68 @@
+/* Estilo para la sección de clientes */
+.clientes-section {
+    padding: 80px 0;
+    text-align: center;
+    background-color: #f9f9f9; 
+    
+    
+}
+
+.clientes-section h2 {
+    font-size: 2.5rem;
+    color: rgb(30, 45, 59);
+    margin-bottom: 30px;
+    position: relative;
+}
+
+.clientes-section h2::after {
+    content: '';
+    display: block;
+    width: 60px;
+    height: 5px;
+    background-color: #ffd700;
+    margin: 10px auto;
+}
+
+
+.clientes-section h3 {
+    font-size: 2rem; 
+    color: rgb(30, 45, 59);
+    margin: 20px 0; 
+}
+
+/* Grid para los logos */
+.clientes-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); 
+    gap: 30px;                
+    max-width: 1400px;        
+    margin: 0 auto;           
+    padding: 0 20px; 
+     
+   
+}
+.clientes-container{
+    justify-content: center;                
+    text-align: center; 
+}
+/* Estilo para los logos */
+.cliente-logo img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    filter: grayscale(100%); 
+    transition: filter 0.3s ease;
+}
+
+.cliente-logo img:hover {
+    filter: grayscale(0%); 
+    transform: scale(1.05);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* Responsividad */
+@media (max-width: 768px) {
+    .clientes-grid {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    }
+}
